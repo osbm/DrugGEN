@@ -1,27 +1,29 @@
 import os
 import time
+import random
+import re
+import pickle
+
 import torch.nn
 import torch
+import torch.utils.data
 
+import torch_geometric.utils as geoutils
+from torch_geometric.loader import DataLoader
+
+from rdkit import RDLogger
+from rdkit.Chem.Scaffolds import MurckoScaffold
+
+from new_dataloader import DruggenDataset
 from utils import *
 from models import Generator, Generator2, simple_disc
-import torch_geometric.utils as geoutils
-#import #wandb
-import re
-from torch_geometric.loader import DataLoader
-from new_dataloader import DruggenDataset
-import torch.utils.data
-from rdkit import RDLogger  
-import pickle
-from rdkit.Chem.Scaffolds import MurckoScaffold
-torch.set_num_threads(5)
-RDLogger.DisableLog('rdApp.*') 
 from loss import discriminator_loss, generator_loss, discriminator2_loss, generator2_loss
 from training_data import load_data
-import random
 
+torch.set_num_threads(5)
+RDLogger.DisableLog('rdApp.*') 
 
-class Trainer(object):
+class Trainer:
     
     """Trainer for training and testing DrugGEN."""
 

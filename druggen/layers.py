@@ -255,14 +255,14 @@ class TransformerDecoder(nn.Module):
     def __init__(self, dim,  depth, heads, mlp_ratio=4, drop_rate=0.):
         super().__init__()
         
-        self.Decoder_Blocks = nn.ModuleList([     
-            Decoder_Block(dim, heads, mlp_ratio, drop_rate)
-            for i in range(depth)])
+        self.Decoder_Blocks = nn.ModuleList(
+            [Decoder_Block(dim, heads, mlp_ratio, drop_rate) for _ in range(depth)]
+        )
         
     def forward(self, mol_annot, prot_annot, mol_adj, prot_adj):
         
-        for Decoder_Block in self.Decoder_Blocks:
-            mol_annot, prot_annot, mol_adj, prot_adj  = Decoder_Block(mol_annot, prot_annot, mol_adj, prot_adj)
+        for decoder_Block in self.Decoder_Blocks:
+            mol_annot, prot_annot, mol_adj, prot_adj  = decoder_Block(mol_annot, prot_annot, mol_adj, prot_adj)
             
         return mol_annot, prot_annot,mol_adj, prot_adj
 

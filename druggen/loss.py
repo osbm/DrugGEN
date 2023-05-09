@@ -1,4 +1,3 @@
-
 import torch
 
 def discriminator_loss(generator, discriminator, mol_graph, adj, annot, batch_size, device, grad_pen, lambda_gp,z_edge,z_node):
@@ -64,7 +63,7 @@ def generator_loss(generator, discriminator, v, adj, annot, batch_size, penalty,
    
         rew_fake = v(graph)
 
-        reward_loss =  torch.mean(rew_fake) ** 2 + reward    
+        reward_loss =  torch.mean(rew_fake) ** 2 + reward
     
         # Calculate total loss
     

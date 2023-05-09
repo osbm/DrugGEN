@@ -1,17 +1,18 @@
 import pickle
+import re 
+import os
+
 import numpy as np
 import torch
 from rdkit import Chem
-from torch_geometric.data import (Data, InMemoryDataset)
-import os.path as osp
-import pickle
-import torch
+from rdkit import RDLogger
+from torch_geometric.data import Data, InMemoryDataset
 from tqdm import tqdm
-import re 
-from rdkit import RDLogger  
+
 RDLogger.DisableLog('rdApp.*') 
+
 class DruggenDataset(InMemoryDataset):
-    
+
     def __init__(self, root, dataset_file, raw_files, max_atom, features, transform=None, pre_transform=None, pre_filter=None):
         self.dataset_name = dataset_file.split(".")[0]
         self.dataset_file = dataset_file
@@ -19,9 +20,9 @@ class DruggenDataset(InMemoryDataset):
         self.max_atom = max_atom
         self.features = features
         super().__init__(root, transform, pre_transform, pre_filter)
-        path = osp.join(self.processed_dir, dataset_file)
+        path = os.path.join(self.processed_dir, dataset_file)
         self.data, self.slices = torch.load(path)
-        self.root = root
+        self.root = root #??
 
         
     @property
@@ -45,8 +46,7 @@ class DruggenDataset(InMemoryDataset):
         self.atom_encoder_m = {l: i for i, l in enumerate(atom_labels)}
         self.atom_decoder_m = {i: l for i, l in enumerate(atom_labels)}
         self.atom_num_types = len(atom_labels)
-        print('Created atoms encoder and decoder with {} atom types and 1 PAD symbol!'.format(
-            self.atom_num_types - 1))
+        print(f'Created atoms encoder and decoder with {self.atom_num_types - 1} atom types and 1 PAD symbol!')
         print("atom_labels", atom_labels)
         print('Creating bonds encoder and decoder..')
         bond_labels = [Chem.rdchem.BondType.ZERO] + list(sorted(set(bond.GetBondType()
@@ -56,8 +56,7 @@ class DruggenDataset(InMemoryDataset):
         self.bond_encoder_m = {l: i for i, l in enumerate(bond_labels)}
         self.bond_decoder_m = {i: l for i, l in enumerate(bond_labels)}
         self.bond_num_types = len(bond_labels)
-        print('Created bonds encoder and decoder with {} bond types and 1 PAD symbol!'.format(
-            self.bond_num_types - 1))        
+        print(f'Created bonds encoder and decoder with {self.bond_num_types - 1} bond types and 1 PAD symbol!')        
         #dataset_names = str(self.dataset_name)
         with open("DrugGEN/data/encoders/" +"atom_" + self.dataset_name + ".pkl","wb") as atom_encoders:
             pickle.dump(self.atom_encoder_m,atom_encoders)
@@ -103,7 +102,7 @@ class DruggenDataset(InMemoryDataset):
 
         max_length = max_length if max_length is not None else mol.GetNumAtoms()
 
-        features = np.array([[*[a.GetDegree() == i for i in range(5)],
+        features = np.array([[*[a.GetDegree() == i for i in range(5)], # what are these numbers ?
                               *[a.GetExplicitValence() == i for i in range(9)],
                               *[int(a.GetHybridization()) == i for i in range(1, 7)],
                               *[a.GetImplicitValence() == i for i in range(9)],
@@ -246,10 +245,9 @@ class DruggenDataset(InMemoryDataset):
         
         self._generate_encoders_decoders(mols)
         
-  
     
         pbar = tqdm(total=len(indices))
-        pbar.set_description(f'Processing chembl dataset')
+        pbar.set_description('Processing chembl dataset')
         max_length = max(mol.GetNumAtoms() for mol in mols)
         data_list = []
       
@@ -285,11 +283,11 @@ class DruggenDataset(InMemoryDataset):
 
         pbar.close()
 
-        torch.save(self.collate(data_list), osp.join(self.processed_dir, self.dataset_file))
+        torch.save(self.collate(data_list), os.path.join(self.processed_dir, self.dataset_file))
 
 
 
-   
+
 if __name__ == '__main__':
     data = DruggenDataset("DrugGEN/data")
     

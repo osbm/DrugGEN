@@ -1,25 +1,27 @@
+import os
+import re
+import math
+import time
+import datetime
+import warnings
+from multiprocessing import Pool
+
 from statistics import mean
 from rdkit import DataStructs
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem import Draw
-import os
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from rdkit import RDLogger  
-import torch 
+import torch
 from rdkit.Chem.Scaffolds import MurckoScaffold
-import math
-import time
-import datetime
-import re
-RDLogger.DisableLog('rdApp.*')   
-import warnings
-from multiprocessing import Pool
-class Metrics(object):
 
+RDLogger.DisableLog('rdApp.*')
+
+class Metrics(object):
     @staticmethod
     def valid(x):
         return x is not None and Chem.MolToSmiles(x) != ''
@@ -74,10 +76,6 @@ def sim_reward(mol_gen, fps_r):
     
     return rew  ## change this to penalty
 
-##########################################
-##########################################
-##########################################
-
 def mols2grid_image(mols,path):
     mols = [e if e is not None else Chem.RWMol() for e in mols]
     
@@ -109,13 +107,8 @@ def save_smiles_matrices(mols,edges_hard, nodes_hard,path,data_source = None):
             print(Chem.MolToSmiles(mols[i]), file=open(save_path,"a"))
         else:
             continue
-
-##########################################
-##########################################
-##########################################
   
 def dense_to_sparse_with_attr(adj):
-    ### 
     assert adj.dim() >= 2 and adj.dim() <= 3
     assert adj.size(-1) == adj.size(-2)
 
@@ -301,12 +294,12 @@ def plot_grad_flow(named_parameters, model, iter, epoch):
 
 """
 def _genDegree():
-    
-    ''' Generates the Degree distribution tensor for PNA, should be used everytime a different
-        dataset is used.
-        Can be called without arguments and saves the tensor for later use. If tensor was created
-        before, it just loads the degree tensor.
-        '''
+    ''' 
+    Generates the Degree distribution tensor for PNA, should be used everytime a different
+    dataset is used.
+    Can be called without arguments and saves the tensor for later use. If tensor was created
+    before, it just loads the degree tensor.
+    '''
     
     degree_path = os.path.join(self.degree_dir, self.dataset_name + '-degree.pt')
     if not os.path.exists(degree_path):
@@ -327,7 +320,7 @@ def _genDegree():
         deg = torch.load(degree_path, map_location=lambda storage, loc: storage)
         
     return deg        
-"""    
+
 def get_mol(smiles_or_mol):
     '''
     Loads SMILES/molecule into RDKit's object

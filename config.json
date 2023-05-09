@@ -1,0 +1,6 @@
+{
+    "submodel": "CrossLoss",
+    "act": "relu",
+    "z_dim": 16,
+    "max_atom": 45
+}
