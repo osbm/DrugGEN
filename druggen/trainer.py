@@ -535,7 +535,7 @@ class Trainer:
             
             dataloader_iterator = iter(self.drugs_loader)
             
-            for i, data in enumerate(self.loader):   
+            for i, data in enumerate(self.loader):
                 try:
                     drugs = next(dataloader_iterator)
                 except StopIteration:
@@ -894,3 +894,43 @@ class Trainer:
         print("Validity: ", novelty(inference_drugs, drug_smiles), "\n")
 
         print("Metrics are calculated.")
+
+
+class Trainer2:
+    def __init__(
+            self,
+            checkpoint_folder: str,
+            disable_rdkit_logging: bool = True,
+            max_epochs: int = 5,
+    ):
+        if disable_rdkit_logging:
+            RDLogger.DisableLog('rdApp.*') 
+
+
+        # check if checkpoint folder exists
+        # the folder should be empty
+        if os.path.exists(checkpoint_folder) and len(os.listdir(checkpoint_folder)) != 0:
+            raise ValueError("Checkpoint folder should be empty")
+
+        # create checkpoint folder
+        os.makedirs(checkpoint_folder, exist_ok=True)
+
+
+        self.checkpoint_folder = checkpoint_folder
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            
+        
+
+
+    def train(self, data_module):
+        for epoch in range(self.max_epochs):
+            for batch in data_module.train_dataloader():
+                # train your model
+                
+
+    def test(self):
+        ...
+
+    def upload_huggingface_hub(self):
+        ...
+

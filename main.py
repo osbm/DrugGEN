@@ -110,9 +110,9 @@ if __name__ == '__main__':
     parser.add_argument('--inference_sample_num', type=int, default=30000, help='inference samples')
     
     # Miscellaneous.
-    parser.add_argument('--num_workers', type=int, default=1)
+    # parser.add_argument('--num_workers', type=int, default=1)
     
-    parser.add_argument('--mode', type=str, default='train', choices=['train', 'inference'])
+    # parser.add_argument('--mode', type=str, default='train', choices=['train', 'inference'])
     
     parser.add_argument('--inference_iterations', type=int, default=100, help='Number of iterations for inference')
     

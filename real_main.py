@@ -9,17 +9,18 @@ config = DrugGENConfig()
 model = DrugGEN(config)
 
 trainer = DrugGENTrainer(
+    model=model,
+    model_config=config,
     log_folder="logs",
     checkpoint_folder="checkpoints",
     wandb=False,
-    rdkit_logging="ignore",
-    gpus=1,
+    disable_rdkit_logging=True,
     max_epochs=1,
     
 )
 
-trainer.fit(model, data_module)
+trainer.fit(data_module)
 
-trainer.test(model, data_module)
+trainer.test(data_module)
 
-trainer.upload_huggingface_hub("druggen", "druggen", "main")
+trainer.upload_huggingface_hub

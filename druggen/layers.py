@@ -163,7 +163,6 @@ class enc_dec_attention(nn.Module):
         key_prot_annot = key_prot_annot.unsqueeze(1)
         
         
-        
         #attn = torch.einsum('bnchd,bmahd->bnahd', query_mol_annot, key_prot_annot)
         
         attn = query_mol_annot * key_prot_annot

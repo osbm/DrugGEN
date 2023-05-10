@@ -10,6 +10,18 @@ class DrugGENConfig():
         z_dim: int=16,
         max_atom: int=45,
         lambda_gp: float=1,
+        warm_up_steps: int=0,
+        G1_transformer_encoder_dim: int=128,
+        G1_transformer_depth: int=1,
+        G2_transformer_depth: int=1,
+        discriminator_type: str="mlp",
+        G1_lr: float=1e-4,
+        G2_lr: float=1e-4,
+        D1_lr: float=1e-4,
+        D2_lr: float=1e-4,
+        dropout: float=0,
+        dec_dropout: float=0,
+        clipping_value: float=0.01,
     ):
         '''
         
@@ -19,6 +31,7 @@ class DrugGENConfig():
 
             z_dim: int, default=16
                 Prior noise for the first GAN
+                
 
         '''
 

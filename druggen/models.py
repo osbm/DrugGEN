@@ -186,31 +186,39 @@ class Generator2(nn.Module):
         return edges_logits, nodes_logits
 
 
-class SimpleDisctiminator(nn.Module):
+class MLPDisctiminator(nn.Module):
     """Simple discriminator with 3 linear layers"""
-    def __init__(self, act,m_dim,vertexes,b_dim):
+    def __init__(self, activation_func, m_dim, vertexes, b_dim):
         super().__init__()
-        act = "tanh"
-        if act == "relu":
-            act = nn.ReLU()
-        elif act == "leaky":
-            act = nn.LeakyReLU()
-        elif act == "sigmoid":
-            act = nn.Sigmoid()
-        elif act == "tanh":
-            act = nn.Tanh()  
+
+        activation_funcs = {
+            "relu": nn.ReLU(),
+            "leaky": nn.LeakyReLU(),
+            "sigmoid": nn.Sigmoid(),
+            "tanh": nn.Tanh()
+        }
+        activation_func = activation_funcs[activation_func]
+
         features = vertexes * m_dim + vertexes * vertexes * b_dim 
         
-        self.predictor = nn.Sequential(nn.Linear(features,256), act, nn.Linear(256,128), act, nn.Linear(128,64), act,
-                                       nn.Linear(64,32), act, nn.Linear(32,16), act,
-                                       nn.Linear(16,1))
+        self.mlp = nn.Sequential(
+            nn.Linear(features,256),
+            activation_func,
+            nn.Linear(256,128),
+            activation_func,
+            nn.Linear(128,64),
+            activation_func,
+            nn.Linear(64,32),
+            activation_func,
+            nn.Linear(32,16),
+            activation_func,
+            nn.Linear(16,1)
+        )
     
     def forward(self, x):
-        prediction = self.predictor(x)
-        
-        #prediction = F.softmax(prediction,dim=-1)
-        
-        return prediction
+        x = self.mlp(x)
+        #prediction = F.softmax(prediction,dim=-1)        
+        return x
 
 """class Discriminator(nn.Module):
   
@@ -302,12 +310,35 @@ class DrugGEN():
     # this model should be able to run fully with only using preprocessed configuration
     # and pretrained weights
     # TODO
+    # finish the model and test it with 
     # hub upload download
     # hub load
 
     def __init__(self, config: DrugGENConfig):
         self.config = config
 
-    
 
+        self.g1 = Generator(config=config)
+        self.g2 = Generator2(config=config)
+        self.d1 = MLPDisctiminator(config=config)
+        self.d2 = MLPDisctiminator(config=config)
+
+    def save_model(self, path):
+        torch.save(self.g1.state_dict(), path + "/g1.pth")
+        torch.save(self.g2.state_dict(), path + "/g2.pth")
+        torch.save(self.d1.state_dict(), path + "/d1.pth")
+        torch.save(self.d2.state_dict(), path + "/d2.pth")
+
+        self.config.save(path + "/config.json")
     
+    def g1_loss(self, batch):
+        ...
+
+    def g2_loss(self, batch):
+        ...
+
+    def d1_loss(self, batch):
+        ...
+
+    def d2_loss(self, batch):
+        ...
