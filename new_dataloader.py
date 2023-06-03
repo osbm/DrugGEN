@@ -43,10 +43,13 @@ class DruggenDataset(InMemoryDataset):
 
         atom_labels = set()
         # bond_labels = set()
+        self.max_atom_size_in_data = 0
+
         for smile in data:
             mol = Chem.MolFromSmiles(smile)
             atom_labels.update([atom.GetAtomicNum() for atom in mol.GetAtoms()])
             # bond_labels.update([bond.GetBondType() for bond in mol.GetBonds()])
+            self.max_atom_size_in_data = max(self.max_atom_size_in_data, mol.GetNumAtoms())
         atom_labels.update([0]) # add PAD symbol (for unknown atoms)
         atom_labels = sorted(atom_labels) # turn set into list and sort it
 
@@ -295,7 +298,7 @@ class DruggenDataset(InMemoryDataset):
         # pbar.set_description(f'Processing chembl dataset')
         # max_length = max(mol.GetNumAtoms() for mol in mols)
         data_list = []
-      
+        max_length = min(self.max_atom_size_in_data, self.max_atom)
         self.m_dim = len(self.atom_decoder_m)
         # for idx in indices:
         for smiles in tqdm(smiles, desc='Processing chembl dataset', total=len(smiles)):
@@ -304,7 +307,7 @@ class DruggenDataset(InMemoryDataset):
             mol = Chem.MolFromSmiles(smile)
             
             # filter by max atom size
-            if mol.GetNumAtoms() > self.max_atom:
+            if mol.GetNumAtoms() > max_length:
                 continue
             
             A = self.generate_adjacency_matrix(mol, connected=True, max_length=max_length)
