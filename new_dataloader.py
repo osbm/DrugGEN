@@ -1,14 +1,14 @@
 import pickle
-import numpy as np
-import torch
-from rdkit import Chem
-from torch_geometric.data import (Data, InMemoryDataset)
 import os.path as osp
-import pickle
+import re
+
 import torch
+import numpy as np
 from tqdm import tqdm
-import re 
-from rdkit import RDLogger  
+from rdkit import Chem
+from rdkit import RDLogger
+from torch_geometric.data import (Data, InMemoryDataset)
+
 RDLogger.DisableLog('rdApp.*') 
 class DruggenDataset(InMemoryDataset):
     
@@ -18,46 +18,61 @@ class DruggenDataset(InMemoryDataset):
         self.raw_files = raw_files
         self.max_atom = max_atom
         self.features = features
+        
         super().__init__(root, transform, pre_transform, pre_filter)
-        path = osp.join(self.processed_dir, dataset_file)
-        self.data, self.slices = torch.load(path)
-        self.root = root
+        self.data, self.slices = torch.load(osp.join(root, dataset_file))
 
-        
-    @property
-    def processed_dir(self):
-        
-        return self.root
-    
+
     @property
     def raw_file_names(self):
         return self.raw_files
 
     @property
     def processed_file_names(self):
+        '''
+        Return the processed file names. If these names are not present, they will be automatically processed using process function of this class.
+        '''
         return self.dataset_file
 
     def _generate_encoders_decoders(self, data):
-        
+        """
+        Generates the encoders and decoders for the atoms and bonds.
+        """
         self.data = data
         print('Creating atoms encoder and decoder..')
-        atom_labels = sorted(set([atom.GetAtomicNum() for mol in self.data for atom in mol.GetAtoms()] + [0]))
+
+        atom_labels = set()
+        # bond_labels = set()
+        for smile in data:
+            mol = Chem.MolFromSmiles(smile)
+            atom_labels.update([atom.GetAtomicNum() for atom in mol.GetAtoms()])
+            # bond_labels.update([bond.GetBondType() for bond in mol.GetBonds()])
+        atom_labels.update([0]) # add PAD symbol (for unknown atoms)
+        atom_labels = sorted(atom_labels) # turn set into list and sort it
+
+        # atom_labels = sorted(set([atom.GetAtomicNum() for mol in self.data for atom in mol.GetAtoms()] + [0]))
         self.atom_encoder_m = {l: i for i, l in enumerate(atom_labels)}
         self.atom_decoder_m = {i: l for i, l in enumerate(atom_labels)}
         self.atom_num_types = len(atom_labels)
-        print('Created atoms encoder and decoder with {} atom types and 1 PAD symbol!'.format(
-            self.atom_num_types - 1))
+        print(f'Created atoms encoder and decoder with {self.atom_num_types - 1} atom types and 1 PAD symbol!')
         print("atom_labels", atom_labels)
         print('Creating bonds encoder and decoder..')
-        bond_labels = [Chem.rdchem.BondType.ZERO] + list(sorted(set(bond.GetBondType()
-                                                                    for mol in self.data
-                                                                    for bond in mol.GetBonds())))
+        # bond_labels = [Chem.rdchem.BondType.ZERO] + list(sorted(set(bond.GetBondType()
+        #                                                             for mol in self.data
+        #                                                             for bond in mol.GetBonds())))
+        bond_labels = [
+            Chem.rdchem.BondType.ZERO,
+            Chem.rdchem.BondType.SINGLE,
+            Chem.rdchem.BondType.DOUBLE,
+            Chem.rdchem.BondType.TRIPLE,
+            Chem.rdchem.BondType.AROMATIC,
+        ]
+
         print("bond labels", bond_labels)
         self.bond_encoder_m = {l: i for i, l in enumerate(bond_labels)}
         self.bond_decoder_m = {i: l for i, l in enumerate(bond_labels)}
         self.bond_num_types = len(bond_labels)
-        print('Created bonds encoder and decoder with {} bond types and 1 PAD symbol!'.format(
-            self.bond_num_types - 1))        
+        print(f'Created bonds encoder and decoder with {self.bond_num_types - 1} bond types and 1 PAD symbol!')
         #dataset_names = str(self.dataset_name)
         with open("DrugGEN/data/encoders/" +"atom_" + self.dataset_name + ".pkl","wb") as atom_encoders:
             pickle.dump(self.atom_encoder_m,atom_encoders)
@@ -76,8 +91,19 @@ class DruggenDataset(InMemoryDataset):
          
         
         
-    def _genA(self, mol, connected=True, max_length=None):
+    def generate_adjacency_matrix(self, mol, connected=True, max_length=None):
+        """
+        Generates the adjacency matrix for a molecule.
 
+        Args:
+            mol (Molecule): The molecule object.
+            connected (bool): Whether to check for connectivity in the molecule. Defaults to True.
+            max_length (int): The maximum length of the adjacency matrix. Defaults to the number of atoms in the molecule.
+
+        Returns:
+            numpy.ndarray or None: The adjacency matrix if connected and all atoms have a degree greater than 0, 
+            otherwise None.
+        """
         max_length = max_length if max_length is not None else mol.GetNumAtoms()
 
         A = np.zeros(shape=(max_length, max_length))
@@ -92,15 +118,33 @@ class DruggenDataset(InMemoryDataset):
 
         return A if connected and (degree > 0).all() else None
 
-    def _genX(self, mol, max_length=None):
+    def generate_node_features(self, mol, max_length=None):
+        """
+        Generates the node features for a molecule.
 
+        Args:
+            mol (Molecule): The molecule object.
+            max_length (int): The maximum length of the node features. Defaults to the number of atoms in the molecule.
+
+        Returns:
+            numpy.ndarray: The node features matrix.
+        """
         max_length = max_length if max_length is not None else mol.GetNumAtoms()
 
         return np.array([self.atom_encoder_m[atom.GetAtomicNum()] for atom in mol.GetAtoms()] + [0] * (
                     max_length - mol.GetNumAtoms()))
 
-    def _genF(self, mol, max_length=None):
+    def generate_additional_features(self, mol, max_length=None):
+        """
+        Generates additional features for a molecule.
 
+        Args:
+            mol (Molecule): The molecule object.
+            max_length (int): The maximum length of the additional features. Defaults to the number of atoms in the molecule.
+
+        Returns:
+            numpy.ndarray: The additional features matrix.
+        """
         max_length = max_length if max_length is not None else mol.GetNumAtoms()
 
         features = np.array([[*[a.GetDegree() == i for i in range(5)],
@@ -193,7 +237,7 @@ class DruggenDataset(InMemoryDataset):
 
 
     def correct_mol(self,x):
-        xsm = Chem.MolToSmiles(x, isomericSmiles=True)
+        # xsm = Chem.MolToSmiles(x, isomericSmiles=True)
         mol = x
         while True:
             flag, atomid_valence = self.check_valency(mol)
@@ -237,34 +281,41 @@ class DruggenDataset(InMemoryDataset):
         return out.float() 
        
     def process(self, size= None):
-        
-        mols = [Chem.MolFromSmiles(line) for line in open(self.raw_files, 'r').readlines()]
-     
-        mols = list(filter(lambda x: x.GetNumAtoms() <= self.max_atom, mols))
-        mols = mols[:size]
-        indices = range(len(mols))
-        
-        self._generate_encoders_decoders(mols)
-        
-  
+        '''
+        Process the dataset. This function will be only run if processed_file_names does not exist in the data folder already.
+        '''
+        # mols = [Chem.MolFromSmiles(line) for line in open(self.raw_files, 'r').readlines()]
+        # mols = list(filter(lambda x: x.GetNumAtoms() <= self.max_atom, mols))
+        # mols = mols[:size] # i 
+        # indices = range(len(mols))
+
+        smiles = pd.read_csv(self.raw_files, header=None)[0].tolist()
+        self._generate_encoders_decoders(smiles)
     
-        pbar = tqdm(total=len(indices))
-        pbar.set_description(f'Processing chembl dataset')
-        max_length = max(mol.GetNumAtoms() for mol in mols)
+        # pbar.set_description(f'Processing chembl dataset')
+        # max_length = max(mol.GetNumAtoms() for mol in mols)
         data_list = []
       
         self.m_dim = len(self.atom_decoder_m)
-        for idx in indices:
-            mol = mols[idx]
-            A = self._genA(mol, connected=True, max_length=max_length)
+        # for idx in indices:
+        for smiles in tqdm(smiles, desc='Processing chembl dataset', total=len(smiles)):
+            # mol = mols[idx]
+            
+            mol = Chem.MolFromSmiles(smile)
+            
+            # filter by max atom size
+            if mol.GetNumAtoms() > self.max_atom:
+                continue
+            
+            A = self.generate_adjacency_matrix(mol, connected=True, max_length=max_length)
             if A is not None:
                 
 
-                x = torch.from_numpy(self._genX(mol, max_length=max_length)).to(torch.long).view(1, -1)
+                x = torch.from_numpy(self.generate_node_features(mol, max_length=max_length)).to(torch.long).view(1, -1)
           
                 x = self.label2onehot(x,self.m_dim).squeeze()
                 if self.features: 
-                    f = torch.from_numpy(self._genF(mol, max_length=max_length)).to(torch.long).view(x.shape[0], -1)
+                    f = torch.from_numpy(self.generate_additional_features(mol, max_length=max_length)).to(torch.long).view(x.shape[0], -1)
                     x = torch.concat((x,f), dim=-1)
              
                 adjacency = torch.from_numpy(A)
@@ -281,9 +332,9 @@ class DruggenDataset(InMemoryDataset):
                     data = self.pre_transform(data)
                     
                 data_list.append(data)
-                pbar.update(1)
+                # pbar.update(1)
 
-        pbar.close()
+        # pbar.close()
 
         torch.save(self.collate(data_list), osp.join(self.processed_dir, self.dataset_file))
 
