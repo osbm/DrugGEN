@@ -1,0 +1,16 @@
+[project]
+name="druggen"
+license= {file("LICENSE")}
+version="0.1.0"
+description= "DrugGEN: Target Centric De Novo Design of Drug Candidate Molecules with Graph Generative Deep Adversarial Networks"
+readme= {file("README.md")}
+
+
+
+[project.urls]
+homepage = "https://github.com/HUBioDataLab/DrugGEN"
+# documentation 
+source = "https://github.com/HUBioDataLab/DrugGEN"
+download = "https://github.com/HUBioDataLab/DrugGEN/releases"
+tracker = "https://github.com/HUBioDataLab/DrugGEN/issues"
+
