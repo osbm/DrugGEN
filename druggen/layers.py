@@ -206,9 +206,19 @@ class simple_disc(nn.Module):
             act = nn.Tanh()  
         features = vertexes * m_dim + vertexes * vertexes * b_dim 
         
-        self.predictor = nn.Sequential(nn.Linear(features,256), act, nn.Linear(256,128), act, nn.Linear(128,64), act,
-                                       nn.Linear(64,32), act, nn.Linear(32,16), act,
-                                       nn.Linear(16,1))
+        self.predictor = nn.Sequential(
+            nn.Linear(features,256),
+            act,
+            nn.Linear(256,128),
+            act,
+            nn.Linear(128,64),
+            act,
+            nn.Linear(64,32),
+            act,
+            nn.Linear(32,16),
+            act,
+            nn.Linear(16,1)
+        )
     
     def forward(self, x):
         

@@ -1,7 +1,19 @@
 
 import torch
 
-def discriminator_loss(generator, discriminator, mol_graph, adj, annot, batch_size, device, grad_pen, lambda_gp,z_edge,z_node):
+def discriminator_loss(
+    generator,
+    discriminator,
+    mol_graph,
+    adj,
+    annot,
+    batch_size,
+    device,
+    grad_pen,
+    lambda_gp,
+    z_edge,
+    z_node
+):
     
     # Compute loss with real molecules.
     

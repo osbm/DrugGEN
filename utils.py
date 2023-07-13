@@ -129,14 +129,18 @@ def dense_to_sparse_with_attr(adj):
     return index, edge_attr
 
 
-def label2onehot(labels, dim, device):
-    
-    """Convert label indices to one-hot vectors."""
-    
-    out = torch.zeros(list(labels.size())+[dim]).to(device)
-    out.scatter_(len(out.size())-1,labels.unsqueeze(-1),1.)
-    
-    return out.float()
+    def label2onehot(labels, dim, device):
+        
+        """Convert label indices to one-hot vectors."""
+        
+        out = torch.zeros(list(labels.size())+[dim]).to(device)
+        out.scatter_(
+            len(out.size())-1,
+            labels.unsqueeze(-1),
+            1.0
+        )
+        
+        return out.float()
 
 
 def sample_z_node(batch_size, vertexes, nodes):

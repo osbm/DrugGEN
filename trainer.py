@@ -84,7 +84,7 @@ class Trainer(object):
                                                      # Uses sparse matrix representation for graphs, 
                                                      # For computational and speed efficiency.
         
-        self.loader = DataLoader(self.dataset, 
+        self.loader = DataLoader(self.dataset,
                                  shuffle=True,
                                  batch_size=self.batch_size, 
                                  drop_last=True)  # PyG dataloader for the first GAN.
@@ -261,138 +261,24 @@ class Trainer(object):
                            mlp_ratio=self.mlp_ratio,
                            submodel = self.submodel)
          
-        self.G2 = Generator2(self.dim,
-                           self.dec_dim,
-                           self.dec_depth,
-                           self.dec_heads,
-                           self.mlp_ratio,
-                           self.dec_dropout,
-                           self.drugs_m_dim,
-                           self.drugs_b_dim,
-                           self.submodel)
-        
-        
-        
-        ''' Discriminator implementation with PNA:
-        
-            @ deg: Degree distribution based on used data. (Created with _genDegree() function)
-            @ agg: aggregators used in PNA
-            @ sca: scalers used in PNA
-            @ pna_in_ch: First PNA hidden dimension
-            @ pna_out_ch: Last PNA hidden dimension
-            @ edge_dim: Edge hidden dimension
-            @ towers: Number of towers (Splitting the hidden dimension to multiple parallel processes)
-            @ pre_lay: Pre-transformation layer
-            @ post_lay: Post-transformation layer 
-            @ pna_layer_num: number of PNA layers
-            @ graph_add: global pooling layer selection
-            '''
 
-      
-        ''' Discriminator implementation with Graph Convolution:
-            
-            @ d_conv_dim: convolution dimensions for GCN
-            @ m_dim: number of atom types (or number of features used)
-            @ b_dim: number of bond types
-            @ dropout: dropout possibility 
-            '''
-
-        ''' Discriminator implementation with MLP:
-            
-            @ act: Activation function for MLP
-            @ m_dim: number of atom types (or number of features used)
-            @ b_dim: number of bond types
-            @ dropout: dropout possibility 
-            @ vertexes: maximum length of generated molecules (molecule length)
-            '''        
-        
         #self.D = Discriminator_old(self.d_conv_dim, self.m_dim , self.b_dim, self.dropout, self.gcn_depth) 
-        self.D2 = simple_disc("tanh", self.drugs_m_dim, self.drug_vertexes, self.drugs_b_dim)
         self.D = simple_disc("tanh", self.m_dim, self.vertexes, self.b_dim)
-        self.V = simple_disc("tanh", self.m_dim, self.vertexes, self.b_dim)
-        self.V2 = simple_disc("tanh", self.drugs_m_dim, self.drug_vertexes, self.drugs_b_dim)
         
-        ''' Optimizers for G1, G2, D1, and D2:
-            
-            Adam Optimizer is used and different beta1 and beta2s are used for GAN1 and GAN2
-            '''
         
         self.g_optimizer = torch.optim.AdamW(self.G.parameters(), self.g_lr, [self.beta1, self.beta2])
-        self.g2_optimizer = torch.optim.AdamW(self.G2.parameters(), self.g2_lr, [self.beta1, self.beta2])
         
         self.d_optimizer = torch.optim.AdamW(self.D.parameters(), self.d_lr, [self.beta1, self.beta2])
-        self.d2_optimizer = torch.optim.AdamW(self.D2.parameters(), self.d2_lr, [self.beta1, self.beta2])
-        
-        
-        
-        self.v_optimizer = torch.optim.AdamW(self.V.parameters(), self.d_lr, [self.beta1, self.beta2])       
-        self.v2_optimizer = torch.optim.AdamW(self.V2.parameters(), self.d2_lr, [self.beta1, self.beta2]) 
-        ''' Learning rate scheduler:
-            
-            Changes learning rate based on loss.
-            '''
-        
-        #self.scheduler_g = ReduceLROnPlateau(self.g_optimizer, mode='min', factor=0.5, patience=10, min_lr=0.00001)
-        
-        
-        #self.scheduler_d = ReduceLROnPlateau(self.d_optimizer, mode='min', factor=0.5, patience=10, min_lr=0.00001)
-   
-        #self.scheduler_v = ReduceLROnPlateau(self.v_optimizer, mode='min', factor=0.5, patience=10, min_lr=0.00001)        
-        #self.scheduler_g2 = ReduceLROnPlateau(self.g2_optimizer, mode='min', factor=0.5, patience=10, min_lr=0.00001)
-        #self.scheduler_d2 = ReduceLROnPlateau(self.d2_optimizer, mode='min', factor=0.5, patience=10, min_lr=0.00001)
-        #self.scheduler_v2 = ReduceLROnPlateau(self.v2_optimizer, mode='min', factor=0.5, patience=10, min_lr=0.00001)                  
+
+                        
         self.print_network(self.G, 'G')
         self.print_network(self.D, 'D')
         
-        self.print_network(self.G2, 'G2')
-        self.print_network(self.D2, 'D2')
         
         self.G.to(self.device)
         self.D.to(self.device)
 
-        self.V.to(self.device)
-        self.V2.to(self.device)
-        self.G2.to(self.device)
-        self.D2.to(self.device)
   
-        #self.V2.to(self.device)      
-        #self.modules_of_the_model = (self.G, self.D, self.G2, self.D2)
-        """for p in self.G.parameters():
-            if p.dim() > 1:
-                if self.init_type == 'uniform':
-                    torch.nn.init.xavier_uniform_(p)
-                elif self.init_type == 'normal':
-                    torch.nn.init.xavier_normal_(p)
-                elif self.init_type == 'random_normal':
-                     torch.nn.init.normal_(p, 0.0, 0.02)
-        for p in self.G2.parameters():
-            if p.dim() > 1:
-                if self.init_type == 'uniform':
-                    torch.nn.init.xavier_uniform_(p)
-                elif self.init_type == 'normal':
-                    torch.nn.init.xavier_normal_(p)   
-                elif self.init_type == 'random_normal':
-                     torch.nn.init.normal_(p, 0.0, 0.02)                 
-        if self.dis_select == "conv":
-            for p in self.D.parameters():
-                if p.dim() > 1:
-                    if self.init_type == 'uniform':
-                        torch.nn.init.xavier_uniform_(p)
-                    elif self.init_type == 'normal':
-                        torch.nn.init.xavier_normal_(p)      
-                    elif self.init_type == 'random_normal':
-                        torch.nn.init.normal_(p, 0.0, 0.02) 
-
-        if self.dis_select == "conv":
-            for p in self.D2.parameters():
-                if p.dim() > 1:
-                    if self.init_type == 'uniform':
-                        torch.nn.init.xavier_uniform_(p)
-                    elif self.init_type == 'normal':
-                        torch.nn.init.xavier_normal_(p)  
-                    elif self.init_type == 'random_normal':
-                        torch.nn.init.normal_(p, 0.0, 0.02)"""     
-
         
     def decoder_load(self, dictionary_name):
         
@@ -435,37 +321,25 @@ class Trainer(object):
         #self.D.load_state_dict(torch.load(D_path, map_location=lambda storage, loc: storage))
       
         
-        G2_path = os.path.join(model_directory, '{}-{}-G2.ckpt'.format(epoch, iteration))
-        #D2_path = os.path.join(model_directory, '{}-{}-D2.ckpt'.format(epoch, iteration))
-        
-        self.G2.load_state_dict(torch.load(G2_path, map_location=lambda storage, loc: storage))
-        #self.D2.load_state_dict(torch.load(D2_path, map_location=lambda storage, loc: storage))
-
-   
     def save_model(self, model_directory, idx,i):
         G_path = os.path.join(model_directory, '{}-{}-G.ckpt'.format(idx+1,i+1))
         D_path = os.path.join(model_directory, '{}-{}-D.ckpt'.format(idx+1,i+1))
         torch.save(self.G.state_dict(), G_path)     
         torch.save(self.D.state_dict(), D_path) 
         
-        if self.submodel != "NoTarget" and self.submodel != "CrossLoss":
-            G2_path = os.path.join(model_directory, '{}-{}-G2.ckpt'.format(idx+1,i+1))
-            D2_path = os.path.join(model_directory, '{}-{}-D2.ckpt'.format(idx+1,i+1))
-    
-            torch.save(self.G2.state_dict(), G2_path)         
-            torch.save(self.D2.state_dict(), D2_path)  
+
         
     def reset_grad(self):
         
         """Reset the gradient buffers."""
         
         self.g_optimizer.zero_grad()
-        self.v_optimizer.zero_grad()
-        self.g2_optimizer.zero_grad()
-        self.v2_optimizer.zero_grad()
+        # self.v_optimizer.zero_grad()
+        # self.g2_optimizer.zero_grad()
+        # self.v2_optimizer.zero_grad()
             
         self.d_optimizer.zero_grad()
-        self.d2_optimizer.zero_grad()
+        # self.d2_optimizer.zero_grad()
 
     def gradient_penalty(self, y, x):
         
@@ -507,15 +381,15 @@ class Trainer(object):
 
 
         # protein data
-        full_smiles = [line for line in open("DrugGEN/data/chembl_train.smi", 'r').read().splitlines()]
-        drug_smiles = [line for line in open("DrugGEN/data/akt_train.smi", 'r').read().splitlines()]
+        # full_smiles = [line for line in open("DrugGEN/data/chembl_train.smi", 'r').read().splitlines()]
+        # drug_smiles = [line for line in open("DrugGEN/data/akt_train.smi", 'r').read().splitlines()]
         
-        drug_mols = [Chem.MolFromSmiles(smi) for smi in drug_smiles]
-        drug_scaf = [MurckoScaffold.GetScaffoldForMol(x) for x in drug_mols]
-        fps_r = [Chem.RDKFingerprint(x) for x in drug_scaf]
+        # drug_mols = [Chem.MolFromSmiles(smi) for smi in drug_smiles]
+        # drug_scaf = [MurckoScaffold.GetScaffoldForMol(x) for x in drug_mols]
+        # fps_r = [Chem.RDKFingerprint(x) for x in drug_scaf]
 
-        akt1_human_adj = torch.load("DrugGEN/data/akt/AKT1_human_adj.pt").reshape(1,-1).to(self.device).float() 
-        akt1_human_annot = torch.load("DrugGEN/data/akt/AKT1_human_annot.pt").reshape(1,-1).to(self.device).float() 
+        # akt1_human_adj = torch.load("DrugGEN/data/akt/AKT1_human_adj.pt").reshape(1,-1).to(self.device).float() 
+        # akt1_human_annot = torch.load("DrugGEN/data/akt/AKT1_human_annot.pt").reshape(1,-1).to(self.device).float() 
       
         # Start training.
         
@@ -531,7 +405,7 @@ class Trainer(object):
             
             dataloader_iterator = iter(self.drugs_loader)
             
-            for i, data in enumerate(self.loader):   
+            for i, data in enumerate(self.loader): # PyG dataloader for the first GAN  
                 try:
                     drugs = next(dataloader_iterator)
                 except StopIteration:
@@ -553,44 +427,13 @@ class Trainer(object):
                 
                 drug_graphs, real_graphs, a_tensor, x_tensor, drugs_a_tensor, drugs_x_tensor, z, z_edge, z_node = bulk_data
                 
-                if self.submodel == "CrossLoss":
-                    GAN1_input_e = drugs_a_tensor
-                    GAN1_input_x = drugs_x_tensor
-                    GAN1_disc_e = a_tensor
-                    GAN1_disc_x = x_tensor
-                elif self.submodel == "Ligand":
-                    GAN1_input_e = a_tensor
-                    GAN1_input_x = x_tensor
-                    GAN1_disc_e = a_tensor
-                    GAN1_disc_x = x_tensor
-                    GAN2_input_e = drugs_a_tensor
-                    GAN2_input_x = drugs_x_tensor
-                    GAN2_disc_e = drugs_a_tensor
-                    GAN2_disc_x = drugs_x_tensor            
-                elif self.submodel == "Prot":        
-                    GAN1_input_e =  a_tensor
-                    GAN1_input_x = x_tensor
-                    GAN1_disc_e = a_tensor
-                    GAN1_disc_x = x_tensor
-                    GAN2_input_e = akt1_human_adj
-                    GAN2_input_x = akt1_human_annot
-                    GAN2_disc_e = drugs_a_tensor
-                    GAN2_disc_x = drugs_x_tensor        
-                elif self.submodel == "RL":
-                    GAN1_input_e = z_edge
-                    GAN1_input_x = z_node
-                    GAN1_disc_e = a_tensor
-                    GAN1_disc_x = x_tensor
-                    GAN2_input_e = drugs_a_tensor
-                    GAN2_input_x = drugs_x_tensor
-                    GAN2_disc_e = drugs_a_tensor
-                    GAN2_disc_x = drugs_x_tensor    
-                elif self.submodel == "NoTarget":
-                    GAN1_input_e = z_edge 
-                    GAN1_input_x = z_node 
-                    GAN1_disc_e = a_tensor
-                    GAN1_disc_x = x_tensor                                                  
-                    
+
+                # elif self.submodel == "NoTarget":
+                GAN1_input_e = z_edge
+                GAN1_input_x = z_node
+                GAN1_disc_e = a_tensor
+                GAN1_disc_x = x_tensor
+                
                 # =================================================================================== #
                 #                             2. Train the discriminator                              #
                 # =================================================================================== #
@@ -612,25 +455,12 @@ class Trainer(object):
                                             GAN1_input_x)
         
                 d_total = d_loss
-                if self.submodel != "NoTarget" and self.submodel != "CrossLoss":
-                    d2_loss = discriminator2_loss(self.G2, 
-                                                    self.D2, 
-                                                    drug_graphs,
-                                                    edge, 
-                                                    node, 
-                                                    self.batch_size, 
-                                                    self.device,
-                                                    self.gradient_penalty, 
-                                                    self.lambda_gp,
-                                                    GAN2_input_e,
-                                                    GAN2_input_x)
-                    d_total = d_loss + d2_loss
+
                 
                 loss["d_total"] = d_total.item()
                 d_total.backward()
                 self.d_optimizer.step()
-                if self.submodel != "NoTarget" and self.submodel != "CrossLoss":
-                    self.d2_optimizer.step()
+
                 self.reset_grad()
                 generator_output = generator_loss(self.G,
                                                     self.D,
@@ -647,35 +477,11 @@ class Trainer(object):
             
                 self.reset_grad()
                 g_total = g_loss
-                if self.submodel != "NoTarget" and self.submodel != "CrossLoss":
-                    output = generator2_loss(self.G2,
-                                                self.D2,
-                                                self.V2,
-                                                edge,
-                                                node,
-                                                self.batch_size,
-                                                sim_reward,
-                                                self.dataset.matrices2mol_drugs,
-                                                fps_r,
-                                                GAN2_input_e,
-                                                GAN2_input_x,
-                                                self.submodel)
-                
-                    g2_loss, fake_mol_g, dr_g_edges_hat_sample, dr_g_nodes_hat_sample = output     
-                
-                    g_total = g_loss + g2_loss     
-              
+
                 loss["g_total"] = g_total.item()
                 g_total.backward()
                 self.g_optimizer.step()
-                if self.submodel != "NoTarget" and self.submodel != "CrossLoss":
-                    self.g2_optimizer.step()
-                
-                if self.submodel == "RL":
-                    self.v_optimizer.step()
-                    self.v2_optimizer.step()
-                  
-                
+
                 if (i+1) % self.log_step == 0:
               
                     logging(self.log_path, self.start_time, fake_mol, full_smiles, i, idx, loss, 1,self.sample_directory) 
@@ -707,9 +513,9 @@ class Trainer(object):
         
         drug_smiles = [line for line in open("DrugGEN/data/akt_test.smi", 'r').read().splitlines()]
         
-        drug_mols = [Chem.MolFromSmiles(smi) for smi in drug_smiles]
-        drug_scaf = [MurckoScaffold.GetScaffoldForMol(x) for x in drug_mols]
-        fps_r = [Chem.RDKFingerprint(x) for x in drug_scaf]
+        # drug_mols = [Chem.MolFromSmiles(smi) for smi in drug_smiles]
+        # drug_scaf = [MurckoScaffold.GetScaffoldForMol(x) for x in drug_mols]
+        # fps_r = [Chem.RDKFingerprint(x) for x in drug_scaf]
 
         akt1_human_adj = torch.load("DrugGEN/data/akt/AKT1_human_adj.pt").reshape(1,-1).to(self.device).float() 
         akt1_human_annot = torch.load("DrugGEN/data/akt/AKT1_human_annot.pt").reshape(1,-1).to(self.device).float() 
@@ -757,9 +563,9 @@ class Trainer(object):
             os.makedirs("DrugGEN/experiments/inference/{}".format(self.submodel))
         with torch.inference_mode():
             
-            dataloader_iterator = iter(self.drugs_loader)
+            dataloader_iterator = iter(self.drugs_loader) # PyG dataloader for the second GAN
             
-            for i, data in enumerate(self.loader):   
+            for i, data in enumerate(self.loader): # PyG dataloader for the first GAN
                 try:
                     drugs = next(dataloader_iterator)
                 except StopIteration:

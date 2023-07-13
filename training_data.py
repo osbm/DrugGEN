@@ -2,7 +2,18 @@ import torch
 import torch_geometric.utils as geoutils
 from utils import *
 
-def load_data(data, drugs, batch_size, device, b_dim, m_dim, drugs_b_dim, drugs_m_dim,z_dim,vertexes):
+def load_data(
+    data, # PyG dataloader for first gan 1 batch
+    drugs, # PyG dataloader for first gan 1 batch
+    batch_size, # int 
+    device, # devie
+    b_dim, # number of bonds
+    m_dim, # number of atoms
+    drugs_b_dim, # number of bonds for drugs
+    drugs_m_dim, # number of atoms for the drugs
+    z_dim, # Prior noise for the first GAN
+    vertexes # Number of nodes in the graph
+):
 
     z = sample_z(batch_size, z_dim)                                                   # (batch,max_len)          
 
